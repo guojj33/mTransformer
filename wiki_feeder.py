@@ -16,10 +16,10 @@ class WikiFeeder(Dataset):
         
         # load raw text
         dataset_path = '{}/{}-00000-of-00001.parquet'.format(dir, phase)
-        raw_data = pq.read_table(dataset_path)['text'].to_pylist()    # debug
+        raw_data = pq.read_table(dataset_path)['text'].to_pylist()   # debug
         print('loading data from {}, sequence count: {}'.format(dataset_path, len(raw_data)))
         # tokenize
-        print('tokenizing')
+        print('tokenizing...')
         tokenized_data = {'tokens': [], 'ids': []}
         for i in range(len(raw_data)):
             tokens, ids = tokenizer.encode(raw_data[i])
@@ -33,7 +33,7 @@ class WikiFeeder(Dataset):
             total_length = (total_length // self.chunk_size) * self.chunk_size # drop the remainder
             result = [concatenated_examples[i:i+self.chunk_size] for i in range(0, total_length, self.chunk_size)]
             return result
-        print('grouping sequences into chunks')
+        print('grouping sequences into chunks...')
         self.lm_data = {k: group(v) for k, v in tokenized_data.items()}
 
     def __len__(self):

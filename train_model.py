@@ -13,10 +13,11 @@ from wiki_feeder import WikiFeeder
 from BPETokenizer import BPETokenizer
 from lr_schedulers import Cosine_Scheduler
 
-tokenizer_dir = './tokenizer'
-work_dir = './output/train/{}'.format(time.strftime("%Y-%m-%d_%H-%M-%S"))
+base_dir = '.'
+tokenizer_dir = '{}/tokenizer'.format(base_dir)
+work_dir = '{}/output/train/{}'.format(base_dir, time.strftime("%Y-%m-%d_%H-%M-%S"))
 os.makedirs(work_dir)
-data_dir = './datasets/wikitext-2-raw-v1'
+data_dir = '{}/datasets/wikitext-2-raw-v1'.format(base_dir)
 
 tokenizer = BPETokenizer()
 tokenizer.load(tokenizer_dir)
@@ -71,8 +72,7 @@ def load_checkpoint(load_path):
   start_epoch = checkpoint['epoch']
   print('resume training: loading from {}'.format(load_path))
 
-# load_path = None
-load_path = './output/train/2025-02-09_22-58-16/checkpoint.pth.tar'
+load_path = None
 if not load_path is None:
    load_checkpoint(load_path)
 
