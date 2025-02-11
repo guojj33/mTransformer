@@ -1,15 +1,19 @@
 import pyarrow.parquet as pq
 from BPETokenizer import BPETokenizer
 
-dataset_path = './datasets/wikitext-2-raw-v1'
-train_data = pq.read_table('{}/train-00000-of-00001.parquet'.format(dataset_path))['text'].to_pylist()
-test_data = pq.read_table('{}/test-00000-of-00001.parquet'.format(dataset_path))['text'].to_pylist()
+base_dir = '.'
+
+# dataset_path = '{}/datasets/wikitext-2-raw-v1'.format(base_dir)
+# train_data = pq.read_table('{}/train-00000-of-00001.parquet'.format(dataset_path))['text'].to_pylist()
+
+dataset_path = '{}/datasets/yourbench-fairytales'.format(base_dir)
+train_data = pq.read_table('{}/train-00000-of-00001.parquet'.format(dataset_path))['content'].to_pylist()
 
 tokenizer = BPETokenizer()
-tmp_workspace = './output/tmp'
+tmp_workspace = '{}/output/tmp'.format(base_dir)
 try:
-    tokenizer.load(tmp_workspace, load_state=True)
-    tokenizer.train(train_data, resume=True)
+    # tokenizer.load(tmp_workspace, load_state=True)
+    tokenizer.train(train_data, resume=False)
 except Exception as e:
     tokenizer.save(tmp_workspace, save_state=True)
     print(e)

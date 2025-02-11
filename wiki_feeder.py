@@ -16,7 +16,7 @@ class WikiFeeder(Dataset):
         
         # load raw text
         dataset_path = '{}/{}-00000-of-00001.parquet'.format(dir, phase)
-        raw_data = pq.read_table(dataset_path)['text'].to_pylist()   # debug
+        raw_data = pq.read_table(dataset_path)['content'].to_pylist()   # debug
         print('loading data from {}, sequence count: {}'.format(dataset_path, len(raw_data)))
         # tokenize
         print('tokenizing...')

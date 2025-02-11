@@ -34,7 +34,7 @@ elif torch.mps.is_available():
 model = mTransformer(tokenizer.vocabulary_size()).to(device)
 
 def get_loss(xs, labels):
-    _, logits = model(xs) # bz, 1024, 30256
+    _, logits, _ = model(xs) # bz, 1024, 30256
     shift_logits = logits[:, :-1, :].contiguous()
     shift_label = labels[:, 1:].contiguous()
     loss = cross_entropy(shift_logits.view(-1, shift_logits.shape[-1]), shift_label.view(-1))   # [bz*1024, 30256], [bz*1024]

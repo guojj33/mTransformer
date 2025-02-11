@@ -14,7 +14,7 @@ from BPETokenizer import BPETokenizer
 from lr_schedulers import Cosine_Scheduler
 
 base_dir = '.'
-tokenizer_dir = '{}/tokenizer'.format(base_dir)
+tokenizer_dir = '{}/tokenizer/wikitext'.format(base_dir)
 
 tokenizer = BPETokenizer()
 tokenizer.load(tokenizer_dir)
@@ -48,7 +48,7 @@ def load_checkpoint(load_path):
   model = checkpoint['model']
   print('loading from {}'.format(load_path))
 
-load_path = './output/train/2025-02-11_10-41-04/checkpoint.pth.tar'
+load_path = './output/train/2025-02-11_21-08-43/checkpoint.pth.tar'
 load_checkpoint(load_path)
 
 def tokenize_input(input_texts):
@@ -61,11 +61,36 @@ def tokenize_input(input_texts):
     return bpe_tokens, input_ids
 
 def generate(input_ids):
-    xs = torch.tensor(input_ids).to(device) # seq_count, seq_len
-    _, logits = model(xs)   # seq_count, seq_len, vocab_size
-    output_ids = logits.max(dim=-1)[1] # seq_count, seq_len
+    xs = torch.tensor(input_ids).to(device) # [seq_count, seq_len]
+    _, logits, _ = model(xs)   # logits [seq_count, seq_len, vocab_size]
+    output_ids = logits.max(dim=-1)[1] # [seq_count, seq_len]
     output_ids = output_ids.cpu().numpy().tolist()
     return output_ids
+
+def auto_reg_generate(input_ids):
+    max_gen_len = 100
+    xs = torch.tensor(input_ids).to(device)
+    cur_len = xs.shape[1]
+    _, logits, presents = model(xs)
+
+    # predict first next token
+    output_next_ids = logits[:,-1,:].max(dim=-1)[1][:,None].detach().clone()  # [seq_count, 1]
+    cur_len += 1
+    
+    # store all predict tokens
+    output_ids = output_next_ids.detach().clone()
+
+    while cur_len < max_gen_len:
+      position_ids = torch.ones_like(output_next_ids)  # [seq_count, 1]
+      position_ids *= (cur_len-1)  # position id of the last token
+      xs = output_next_ids
+      _, logits, presents = model(xs, past_key_value=presents, position_ids=position_ids)
+
+      output_next_ids = logits[:,-1,:].max(dim=-1)[1][:,None].clone().detach()  # [seq_count, 1]
+      output_ids = torch.cat((output_ids, output_next_ids), dim=-1)
+      cur_len += 1
+
+    return output_ids.cpu().numpy().tolist()
 
 def decode_output(output_ids):
     output_texts = []
@@ -77,16 +102,17 @@ def decode_output(output_ids):
 def inferece():
   model.eval()
   with torch.no_grad():
-    input_texts = [' what is the whether like today']
+    input_texts = ['on a sunnday morning, the children are']
     bpe_tokens, input_ids = tokenize_input(input_texts)
-    output_ids = generate(input_ids)
+    # output_ids = generate(input_ids)
+    output_ids = auto_reg_generate(input_ids)
     output_texts = decode_output(output_ids)
+    for i, text in enumerate(input_texts):
+      output_texts[i] = input_texts[i] + output_texts[i]
 
     print('input:')
     print(input_texts)
-    print(input_ids)
     print('output:')
     print(output_texts)
-    print(output_ids)
 
 inferece()

@@ -11,21 +11,20 @@ import numpy as np
 from model import mTransformer
 from wiki_feeder import WikiFeeder
 from BPETokenizer import BPETokenizer
-from lr_schedulers import Cosine_Scheduler
+from lr_schedulers import Cosine_Scheduler, Step_Scheduler
 
 base_dir = '.'
-tokenizer_dir = '{}/tokenizer'.format(base_dir)
+tokenizer_dir = '{}/tokenizer/wikitext'.format(base_dir)
 work_dir = '{}/output/train/{}'.format(base_dir, time.strftime("%Y-%m-%d_%H-%M-%S"))
 os.makedirs(work_dir)
-data_dir = '{}/datasets/wikitext-2-raw-v1'.format(base_dir)
+# data_dir = '{}/datasets/wikitext-2-raw-v1'.format(base_dir)
+data_dir = '{}/datasets/yourbench-fairytales'.format(base_dir)
 
 tokenizer = BPETokenizer()
 tokenizer.load(tokenizer_dir)
 
 train_dataset = WikiFeeder('train', data_dir, tokenizer)
 train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-# test_dataset = WikiFeeder('test', data_dir, tokenizer)
-# test_dataloader = DataLoader(test_dataset, batch_size=16)
 
 device = torch.device('cpu')
 if torch.cuda.is_available():
@@ -41,10 +40,11 @@ model = mTransformer(tokenizer.vocabulary_size()).to(device)
 learning_rate = 5e-5
 optimizer = Adam(model.parameters(), lr=learning_rate)
 lr_lambda = Cosine_Scheduler(len(train_dataloader), max_epoch, warm_up_epoch).get_lambda()
+# lr_lambda = Step_Scheduler(len(train_dataloader), warm_up_epoch=0, step_lr=[20, 40]).get_lambda()
 scheduler = LambdaLR(optimizer, lr_lambda)
 
 def get_loss(xs, labels):
-    _, logits = model(xs) # bz, 1024, 30256
+    _, logits, _ = model(xs) # bz, 1024, 30256
     shift_logits = logits[:, :-1, :].contiguous()
     shift_label = labels[:, 1:].contiguous()
     loss = cross_entropy(shift_logits.view(-1, shift_logits.shape[-1]), shift_label.view(-1))   # [bz*1024, 30256], [bz*1024]
@@ -69,18 +69,20 @@ def save_checkpoint(epoch, name='checkpoint'):
    torch.save(checkpoint, '{}/{}.pth.tar'.format(work_dir, name))
    print('{} saved.'.format(name))
 
-def load_checkpoint(load_path):
+def load_checkpoint(load_path, resume):
+  print('loading from {}'.format(load_path))
   checkpoint = torch.load(load_path, weights_only=False, map_location=device)
-  global model, optimizer, scheduler, start_epoch
+  global model
   model = checkpoint['model']
-  optimizer.load_state_dict(checkpoint['optimizer'])
-  scheduler.load_state_dict(checkpoint['scheduler'])
-  start_epoch = checkpoint['epoch']
-  print('resume training: loading from {}'.format(load_path))
+  if resume:
+    global optimizer, scheduler, start_epoch
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    scheduler.load_state_dict(checkpoint['scheduler'])
+    start_epoch = checkpoint['epoch']
 
-load_path = './output/train/2025-02-11_10-17-47/checkpoint.pth.tar'
+load_path = None
 if not load_path is None:
-   load_checkpoint(load_path)
+   load_checkpoint(load_path, resume=False)
 
 for e in range(start_epoch, max_epoch):
     print('[train epoch {}/{}]'.format(e+1, max_epoch))
