@@ -40,7 +40,7 @@ warm_up_epoch = 3
 model = mTransformer(tokenizer.vocabulary_size()).to(device)
 learning_rate = 5e-5
 optimizer = Adam(model.parameters(), lr=learning_rate)
-lr_lambda = Cosine_Scheduler(len(train_dataloader), max_epoch, warm_up_epoch, warm_up_iters).get_lambda()
+lr_lambda = Cosine_Scheduler(len(train_dataloader), max_epoch, warm_up_epoch).get_lambda()
 scheduler = LambdaLR(optimizer, lr_lambda)
 
 def get_loss(xs, labels):
