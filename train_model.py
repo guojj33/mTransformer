@@ -26,15 +26,21 @@ train_dataset = WikiFeeder('train', data_dir, tokenizer)
 train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 # test_dataset = WikiFeeder('test', data_dir, tokenizer)
 # test_dataloader = DataLoader(test_dataset, batch_size=16)
-device = torch.device('mps:0')
+
+device = torch.device('cpu')
+if torch.cuda.is_available():
+   device = torch.device('cuda:0')
+elif torch.mps.is_available():
+  device = torch.device('mps:0')
 
 start_epoch = 0
 max_epoch = 100
 warm_up_epoch = 3
 
 model = mTransformer(tokenizer.vocabulary_size()).to(device)
-optimizer = Adam(model.parameters(), lr=5e-5)
-lr_lambda = Cosine_Scheduler(len(train_dataloader), max_epoch, warm_up_epoch).get_lambda()
+learning_rate = 5e-5
+optimizer = Adam(model.parameters(), lr=learning_rate)
+lr_lambda = Cosine_Scheduler(len(train_dataloader), max_epoch, warm_up_epoch, warm_up_iters).get_lambda()
 scheduler = LambdaLR(optimizer, lr_lambda)
 
 def get_loss(xs, labels):
@@ -64,7 +70,7 @@ def save_checkpoint(epoch, name='checkpoint'):
    print('{} saved.'.format(name))
 
 def load_checkpoint(load_path):
-  checkpoint = torch.load(load_path)
+  checkpoint = torch.load(load_path, weights_only=False, map_location=device)
   global model, optimizer, scheduler, start_epoch
   model = checkpoint['model']
   optimizer.load_state_dict(checkpoint['optimizer'])
@@ -72,7 +78,7 @@ def load_checkpoint(load_path):
   start_epoch = checkpoint['epoch']
   print('resume training: loading from {}'.format(load_path))
 
-load_path = None
+load_path = './output/train/2025-02-11_10-17-47/checkpoint.pth.tar'
 if not load_path is None:
    load_checkpoint(load_path)
 
