@@ -129,11 +129,11 @@ class BPETokenizer:
     
     def load(self, dir, load_state=False):
         # load vocabulary
-        with open('{}/vocab.json'.format(dir), 'r') as f:
+        with open('{}/vocab.json'.format(dir), 'r', encoding='UTF-8') as f:
             self.vocabulary = json.load(f)
         # load merge operations
         self.merge_ops = self.init_merge_operations()
-        with open('{}/merges.txt'.format(dir), 'r') as f:
+        with open('{}/merges.txt'.format(dir), 'r', encoding='UTF-8') as f:
             lines = f.readlines()
             for l in lines:
                 self.merge_ops.append(tuple(l[:-1].split(' ')))
@@ -141,21 +141,21 @@ class BPETokenizer:
         print('load vocabulary size: {}'.format(len(self.vocabulary)))
 
         if load_state:
-            with open('{}/state.json'.format(dir), 'r') as f:
+            with open('{}/state.json'.format(dir), 'r', encoding='UTF-8') as f:
                 self.vocab = json.load(f)
             print('load state')
 
     def save(self, dir, save_state=False):
         # save vocabulary
-        with open('{}/vocab.json'.format(dir), 'w') as f:
+        with open('{}/vocab.json'.format(dir), 'w', encoding='UTF-8') as f:
             json.dump(self.vocabulary, f)
         # save merge operations
-        with open('{}/merges.txt'.format(dir), 'w') as f:
+        with open('{}/merges.txt'.format(dir), 'w', encoding='UTF-8') as f:
             for op in self.merge_ops:
                 f.write('{} {}\n'.format(op[0], op[1]))
         
         if save_state:
-            with open('{}/state.json'.format(dir), 'w') as f:
+            with open('{}/state.json'.format(dir), 'w', encoding='UTF-8') as f:
                 json.dump(self.vocab, f)
             print('save state')
 
