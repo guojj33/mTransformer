@@ -61,7 +61,7 @@ class meanVar():
 def save_checkpoint(epoch, name='checkpoint'):
    print('saving {}...'.format(name))
    checkpoint = {
-      'model': model,
+      'model': model.state_dict(),
       'optimizer': optimizer.state_dict(),
       'scheduler': scheduler.state_dict(),
       'epoch': epoch
@@ -73,16 +73,16 @@ def load_checkpoint(load_path, resume):
   print('loading from {}'.format(load_path))
   checkpoint = torch.load(load_path, weights_only=False, map_location=device)
   global model
-  model = checkpoint['model']
+  model.load_state_dict(checkpoint['model'])
   if resume:
     global optimizer, scheduler, start_epoch
     optimizer.load_state_dict(checkpoint['optimizer'])
     scheduler.load_state_dict(checkpoint['scheduler'])
     start_epoch = checkpoint['epoch']
 
-load_path = None
+load_path = './output/train/2025-02-12_23-35-35/checkpoint.pth.tar'
 if not load_path is None:
-   load_checkpoint(load_path, resume=False)
+   load_checkpoint(load_path, resume=True)
 
 for e in range(start_epoch, max_epoch):
     print('[train epoch {}/{}]'.format(e+1, max_epoch))

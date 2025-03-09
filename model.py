@@ -19,11 +19,11 @@ class mAttention(nn.Module):
     '''
     multi-head scaled-dot-product attention with casual mask
     '''
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim, num_head):
         super().__init__()
         # attention mask
         self.embed_dim = embed_dim
-        self.num_head = 12
+        self.num_head = num_head
         self.head_dim = self.embed_dim // self.num_head
         self.ln_attn = nn.Linear(embed_dim, 3*embed_dim)
 
@@ -42,19 +42,21 @@ class mAttention(nn.Module):
             past_value = layer_past[1]
             key = torch.cat((past_key, key), dim=-2)
             value = torch.cat((past_value, value), dim=-2)
-        attn_output = F.scaled_dot_product_attention(query, key, value, is_causal=True) # (batch, num_head, seq_len, head_dim)
+        seq_len = hidden_states.shape[1]
+        is_causal = True if seq_len > 1 else False  # is_causal = False during autoregressive generation
+        attn_output = F.scaled_dot_product_attention(query, key, value, is_causal=is_causal) # (batch, num_head, seq_len, head_dim)
         bsz, _, seq_len, _ = attn_output.shape
         attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, seq_len, self.embed_dim)   # (batch, seq_len, embed_dim)
-        present = (key, value)
+        present = (key, value)  # ([batch, num_haed, seq_len, head_dim], [B, N, S, H])
         return attn_output, present
 
 class mBlock(nn.Module):
-    def __init__(self, embed_dim):
+    def __init__(self, embed_dim, num_head):
         super().__init__()
         self.mlp = mMLP(embed_dim, 4*embed_dim)
         self.ln_1 = nn.LayerNorm(embed_dim)
         self.ln_2 = nn.LayerNorm(embed_dim)
-        self.attn = mAttention(embed_dim)
+        self.attn = mAttention(embed_dim, num_head)
 
     def forward(self, hidden_states, layer_past=None):
         residual = hidden_states
@@ -80,13 +82,13 @@ class mTransformer(nn.Module):
         self.embed_dim = 768
         self.vocab_size = vocab_size
         self.max_position_embedding = 1024
-        self.num_hidden_layers = 12
-        self.num_head = 12
+        self.num_hidden_layers = 6
+        self.num_head = 6
 
         self.wte = nn.Embedding(self.vocab_size, self.embed_dim)
         self.wpe = nn.Embedding(self.max_position_embedding, self.embed_dim)
 
-        self.h = nn.ModuleList([mBlock(self.embed_dim) for i in range(self.num_hidden_layers)])
+        self.h = nn.ModuleList([mBlock(self.embed_dim, self.num_head) for i in range(self.num_hidden_layers)])
 
         self.ln = nn.Linear(self.embed_dim, self.vocab_size, bias=False)
 
@@ -99,7 +101,7 @@ class mTransformer(nn.Module):
         position_embeds = self.wpe(position_ids)    # [bz, seq_len, embed_dim]
         hidden_states = inputs_embeds + position_embeds
 
-        presents = ()   # key value cache
+        presents = ()   # key value cache   # presents = ((key, value), ..., (key, value))  # len(presents) = num_hidden_layers
         for i in range(self.num_hidden_layers):
             block = self.h[i]
             layer_past = None

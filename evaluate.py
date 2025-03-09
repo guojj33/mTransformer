@@ -68,18 +68,14 @@ def generate(input_ids):
     return output_ids
 
 def auto_reg_generate(input_ids):
-    max_gen_len = 200
+    max_gen_len = 500
     xs = torch.tensor(input_ids).to(device)
     cur_len = xs.shape[1]
     _, logits, presents = model(xs)
 
-    def sample(logits, temperature=0): # [num_sample, vocab_size]
-      if temperature == 0:
-        output_ids = logits.max(dim=-1)[1][:,None]
-      else:
-        probs = softmax(logits/temperature, dim=-1)
-        output_ids = torch.multinomial(probs, num_samples=1) # [num_sample, 1]
-      return output_ids
+    def sample(logits, temperature=0.5): # [num_sample, vocab_size]
+      probs = softmax(logits/temperature, dim=-1)
+      return torch.multinomial(probs, num_samples=1) # [num_sample, 1]
 
     # predict first next token
     logits = logits[:,-1,:].detach().clone() # logit of the last token of each sequence [seq_count, 1]
@@ -110,20 +106,21 @@ def decode_output(output_ids):
         output_texts.append(output)
     return output_texts
 
-def inference():
+def evaluate():
   model.eval()
   with torch.no_grad():
-    input_texts = ['There was once upon a time']
+    input_texts = ['how are you']
     bpe_tokens, input_ids = tokenize_input(input_texts)
-    # output_ids = generate(input_ids)
-    output_ids = auto_reg_generate(input_ids)
+    print(input_ids)
+    output_ids = generate(input_ids)
+    print(output_ids)
     output_texts = decode_output(output_ids)
     for i, text in enumerate(input_texts):
-      output_texts[i] = input_texts[i] + output_texts[i]
+      output_texts[i] = output_texts[i]
 
     print('input:')
     print(input_texts)
     print('output:')
     print(output_texts)
 
-inference()
+evaluate()

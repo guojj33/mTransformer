@@ -84,6 +84,12 @@ def auto_reg_generate(input_ids):
     # predict first next token
     logits = logits[:,-1,:].detach().clone() # logit of the last token of each sequence [seq_count, 1]
     output_next_ids = sample(logits)  # [seq_count, 1]
+
+    # print first token
+    next_token = decode_output(output_next_ids.cpu().numpy().tolist())
+    print(next_token[0], end='')
+
+
     cur_len += 1
     
     # store all predict tokens
@@ -98,6 +104,11 @@ def auto_reg_generate(input_ids):
       # output_next_ids = logits[:,-1,:].max(dim=-1)[1][:,None].clone().detach()  # [seq_count, 1]
       logits = logits[:,-1,:].detach().clone()
       output_next_ids = sample(logits)
+
+      # streaming
+      next_token = decode_output(output_next_ids.cpu().numpy().tolist())
+      print(next_token[0], end='')
+
       output_ids = torch.cat((output_ids, output_next_ids), dim=-1)
       cur_len += 1
 
@@ -110,20 +121,15 @@ def decode_output(output_ids):
         output_texts.append(output)
     return output_texts
 
-def inference():
+def chat():
   model.eval()
   with torch.no_grad():
-    input_texts = ['There was once upon a time']
-    bpe_tokens, input_ids = tokenize_input(input_texts)
-    # output_ids = generate(input_ids)
-    output_ids = auto_reg_generate(input_ids)
-    output_texts = decode_output(output_ids)
-    for i, text in enumerate(input_texts):
-      output_texts[i] = input_texts[i] + output_texts[i]
+    while True:
+      user_input = input('\nYou:\n')
+      input_texts = [user_input]
+      print('Tony:')
+      bpe_tokens, input_ids = tokenize_input(input_texts)
+      # output_ids = generate(input_ids)
+      output_ids = auto_reg_generate(input_ids)
 
-    print('input:')
-    print(input_texts)
-    print('output:')
-    print(output_texts)
-
-inference()
+chat()
